@@ -86,6 +86,8 @@ def get_from_raw_to_lerobot_format_fn(raw_format):
         from lerobot.common.datasets.push_dataset_to_hub.aloha_hdf5_format import from_raw_to_lerobot_format
     elif raw_format == "xarm_pkl":
         from lerobot.common.datasets.push_dataset_to_hub.xarm_pkl_format import from_raw_to_lerobot_format
+    elif raw_format == "dobbe":
+        from lerobot.common.datasets.push_dataset_to_hub.dobbe_format import from_raw_to_lerobot_format
     else:
         raise ValueError(raw_format)
 
@@ -105,7 +107,8 @@ def save_meta_data(info, stats, episode_data_index, meta_data_dir):
     save_file(flatten_dict(stats), stats_path)
 
     # save episode_data_index
-    episode_data_index = {key: torch.tensor(episode_data_index[key]) for key in episode_data_index}
+    episode_data_index = {key: torch.tensor(
+        episode_data_index[key]) for key in episode_data_index}
     ep_data_idx_path = meta_data_dir / "episode_data_index.safetensors"
     save_file(episode_data_index, ep_data_idx_path)
 
@@ -184,7 +187,8 @@ def push_dataset_to_hub(
     from_raw_to_lerobot_format = get_from_raw_to_lerobot_format_fn(raw_format)
 
     # convert dataset from original raw format to LeRobot format
-    hf_dataset, episode_data_index, info = from_raw_to_lerobot_format(raw_dir, out_dir, fps, video, debug)
+    hf_dataset, episode_data_index, info = from_raw_to_lerobot_format(
+        raw_dir, out_dir, fps, video, debug)
 
     lerobot_dataset = LeRobotDataset.from_preloaded(
         repo_id=repo_id,
@@ -197,7 +201,8 @@ def push_dataset_to_hub(
     stats = compute_stats(lerobot_dataset, batch_size, num_workers)
 
     if save_to_disk:
-        hf_dataset = hf_dataset.with_format(None)  # to remove transforms that cant be saved
+        # to remove transforms that cant be saved
+        hf_dataset = hf_dataset.with_format(None)
         hf_dataset.save_to_disk(str(out_dir / "train"))
 
     if not dry_run or save_to_disk:
@@ -217,7 +222,8 @@ def push_dataset_to_hub(
 
     if save_tests_to_disk:
         # get the first episode
-        num_items_first_ep = episode_data_index["to"][0] - episode_data_index["from"][0]
+        num_items_first_ep = episode_data_index["to"][0] - \
+            episode_data_index["from"][0]
         test_hf_dataset = hf_dataset.select(range(num_items_first_ep))
 
         test_hf_dataset = test_hf_dataset.with_format(None)

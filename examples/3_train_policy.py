@@ -44,13 +44,15 @@ policy = DiffusionPolicy(cfg, dataset_stats=dataset.stats)
 policy.train()
 policy.to(device)
 
+print("Using Device: ", device)
+
 optimizer = torch.optim.Adam(policy.parameters(), lr=1e-4)
 
 # Create dataloader for offline training.
 dataloader = torch.utils.data.DataLoader(
     dataset,
-    num_workers=4,
-    batch_size=64,
+    num_workers=0,
+    batch_size=32,
     shuffle=True,
     pin_memory=device != torch.device("cpu"),
     drop_last=True,
