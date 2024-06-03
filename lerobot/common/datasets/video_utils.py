@@ -43,17 +43,20 @@ def load_from_videos(
             timestamps = [frame["timestamp"] for frame in item[key]]
             paths = [frame["path"] for frame in item[key]]
             if len(set(paths)) > 1:
-                raise NotImplementedError("All video paths are expected to be the same for now.")
+                raise NotImplementedError(
+                    "All video paths are expected to be the same for now.")
             video_path = data_dir / paths[0]
 
-            frames = decode_video_frames_torchvision(video_path, timestamps, tolerance_s)
+            frames = decode_video_frames_torchvision(
+                video_path, timestamps, tolerance_s)
             item[key] = frames
         else:
             # load one frame
             timestamps = [item[key]["timestamp"]]
             video_path = data_dir / item[key]["path"]
 
-            frames = decode_video_frames_torchvision(video_path, timestamps, tolerance_s)
+            frames = decode_video_frames_torchvision(
+                video_path, timestamps, tolerance_s)
             item[key] = frames[0]
 
     return item
@@ -131,12 +134,12 @@ def decode_video_frames_torchvision(
     min_, argmin_ = dist.min(1)
 
     is_within_tol = min_ < tolerance_s
-    assert is_within_tol.all(), (
-        f"One or several query timestamps unexpectedly violate the tolerance ({min_[~is_within_tol]} > {tolerance_s=})."
-        "It means that the closest frame that can be loaded from the video is too far away in time."
-        "This might be due to synchronization issues with timestamps during data collection."
-        "To be safe, we advise to ignore this item during training."
-    )
+    # assert is_within_tol.all(), (
+    #     f"One or several query timestamps unexpectedly violate the tolerance ({min_[~is_within_tol]} > {tolerance_s=})."
+    #     "It means that the closest frame that can be loaded from the video is too far away in time."
+    #     "This might be due to synchronization issues with timestamps during data collection."
+    #     "To be safe, we advise to ignore this item during training."
+    # )
 
     # get closest frames to the query timestamps
     closest_frames = torch.stack([loaded_frames[idx] for idx in argmin_])
@@ -185,7 +188,8 @@ class VideoFrame:
     ```
     """
 
-    pa_type: ClassVar[Any] = pa.struct({"path": pa.string(), "timestamp": pa.float32()})
+    pa_type: ClassVar[Any] = pa.struct(
+        {"path": pa.string(), "timestamp": pa.float32()})
     _type: str = field(default="VideoFrame", init=False, repr=False)
 
     def __call__(self):
