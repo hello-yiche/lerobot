@@ -261,7 +261,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     optimizer, lr_scheduler = make_optimizer_and_scheduler(cfg, policy)
     grad_scaler = GradScaler(enabled=cfg.use_amp)
 
-    num_learnable_params = sum(p.numel() for p in policy.parameters() if p.requires_grad)
+    num_learnable_params = sum(p.numel()
+                               for p in policy.parameters() if p.requires_grad)
     num_total_params = sum(p.numel() for p in policy.parameters())
 
     # log metrics to terminal and wandb
@@ -269,12 +270,16 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
 
     log_output_dir(out_dir)
     logging.info(f"{cfg.env.task=}")
-    logging.info(f"{cfg.training.offline_steps=} ({format_big_number(cfg.training.offline_steps)})")
+    logging.info(
+        f"{cfg.training.offline_steps=} ({format_big_number(cfg.training.offline_steps)})")
     logging.info(f"{cfg.training.online_steps=}")
-    logging.info(f"{offline_dataset.num_samples=} ({format_big_number(offline_dataset.num_samples)})")
+    logging.info(
+        f"{offline_dataset.num_samples=} ({format_big_number(offline_dataset.num_samples)})")
     logging.info(f"{offline_dataset.num_episodes=}")
-    logging.info(f"{num_learnable_params=} ({format_big_number(num_learnable_params)})")
-    logging.info(f"{num_total_params=} ({format_big_number(num_total_params)})")
+    logging.info(
+        f"{num_learnable_params=} ({format_big_number(num_learnable_params)})")
+    logging.info(
+        f"{num_total_params=} ({format_big_number(num_total_params)})")
 
     # Note: this helper will be used in offline and online training loops.
     def evaluate_and_checkpoint_if_needed(step):
@@ -289,9 +294,11 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
                     max_episodes_rendered=4,
                     start_seed=cfg.seed,
                 )
-            log_eval_info(logger, eval_info["aggregated"], step, cfg, offline_dataset, is_offline)
+            log_eval_info(
+                logger, eval_info["aggregated"], step, cfg, offline_dataset, is_offline)
             if cfg.wandb.enable:
-                logger.log_video(eval_info["video_paths"][0], step, mode="eval")
+                logger.log_video(
+                    eval_info["video_paths"][0], step, mode="eval")
             logging.info("Resume training")
 
         if cfg.training.save_model and step % cfg.training.save_freq == 0:
@@ -309,7 +316,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     # create dataloader for offline training
     dataloader = torch.utils.data.DataLoader(
         offline_dataset,
-        num_workers=4,
+        num_workers=0,
         batch_size=cfg.training.batch_size,
         shuffle=True,
         pin_memory=device.type != "cpu",
@@ -339,7 +346,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
 
         # TODO(rcadene): is it ok if step_t=0 = 0 and not 1 as previously done?
         if step % cfg.training.log_freq == 0:
-            log_train_info(logger, train_info, step, cfg, offline_dataset, is_offline)
+            log_train_info(logger, train_info, step, cfg,
+                           offline_dataset, is_offline)
 
         # Note: evaluate_and_checkpoint_if_needed happens **after** the `step`th training update has completed,
         # so we pass in step + 1.
@@ -351,14 +359,15 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     online_dataset.episode_data_index = {}
 
     # create dataloader for online training
-    concat_dataset = torch.utils.data.ConcatDataset([offline_dataset, online_dataset])
+    concat_dataset = torch.utils.data.ConcatDataset(
+        [offline_dataset, online_dataset])
     weights = [1.0] * len(concat_dataset)
     sampler = torch.utils.data.WeightedRandomSampler(
         weights, num_samples=len(concat_dataset), replacement=True
     )
     dataloader = torch.utils.data.DataLoader(
         concat_dataset,
-        num_workers=4,
+        num_workers=0,
         batch_size=cfg.training.batch_size,
         sampler=sampler,
         pin_memory=device.type != "cpu",
