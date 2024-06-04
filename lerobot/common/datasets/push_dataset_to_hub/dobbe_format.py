@@ -134,7 +134,6 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
 
     data_dict = {}
     data_dict = concatenate_episodes(ep_dicts)
-    print("SUCCESSSSSSS")
 
     return data_dict, episode_data_index
 
@@ -149,10 +148,6 @@ def to_hf_dataset(data_dict, video=False) -> Dataset:
         else:
             features[key] = Image()
 
-    # features["observation.state"] = Sequence(
-    #     length=data_dict["observation.state"].shape[1], feature=Value(
-    #         dtype="float32", id=None)
-    # )
     features["action"] = Sequence(
         length=data_dict["action"].shape[1], feature=Value(
             dtype="float32", id=None)
