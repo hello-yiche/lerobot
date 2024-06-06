@@ -52,15 +52,17 @@ def check_format(raw_dir):
     assert len(episode_dirs) != 0
 
     for episode_dir in episode_dirs:
-        compressed_imgs = episode_dir / "compressed_images"
-        png_files = list(compressed_imgs.glob("*.png"))
-        assert len(png_files) > 0
+        for camera in ["gripper", "head"]:
+            compressed_imgs = episode_dir / f"compressed_{camera}_images"
+            png_files = list(compressed_imgs.glob("*.png"))
+            assert len(png_files) > 0
 
-        compressed_video = episode_dir / "compressed_video_h264.mp4"
-        assert compressed_video.exists()
+            compressed_video = episode_dir / \
+                f"{camera}_compressed_video_h264.mp4"
+            assert compressed_video.exists()
 
-        labels = episode_dir / "labels.json"
-        assert labels.exists()
+            labels = episode_dir / "labels.json"
+            assert labels.exists()
 
 
 def load_from_raw(raw_dir, out_dir, fps, video, debug):
@@ -73,26 +75,23 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
 
     id_from = 0
     for ep_idx, ep_path in tqdm.tqdm(enumerate(episode_dirs), total=len(episode_dirs)):
-        # load image frames
-        compressed_imgs = ep_path / "compressed_images"
-        png_files = list(compressed_imgs.glob("*.png"))
-        num_frames = len(png_files)
-
-        # last step of demonstration is considered done
-        done = torch.zeros(num_frames, dtype=torch.bool)
-        done[-1] = True
 
         # Dictionary for episode data
         ep_dict = {}
 
-        for camera in ["gripper"]:
+        for camera in ["gripper", "head"]:
             img_key = f"observation.images.{camera}"
 
+            # load image frames
+            compressed_imgs = ep_path / f"compressed_{camera}_images"
+            png_files = list(compressed_imgs.glob("*.png"))
+            num_frames = len(png_files)
+
             if video:
-                video_path = ep_path / "compressed_video.mp4"
+                video_path = ep_path / f"{camera}_compressed_video_h264.mp4"
                 assert video_path.exists()
 
-                fname = f"gripper_episode_{ep_idx:06d}.mp4"
+                fname = f"{camera}_episode_{ep_idx:06d}.mp4"
                 video_dir = out_dir / "videos"
                 video_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(video_path, video_dir / fname)
@@ -104,13 +103,19 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                 ep_dict[img_key] = [
                     PILImage.open(file) for file in png_files]
 
+        # last step of demonstration is considered done
+        done = torch.zeros(num_frames, dtype=torch.bool)
+        done[-1] = True
+
         labels = ep_path / "labels.json"
         with open(labels, "r") as f:
             labels_dict = json.load(f)
             assert len(labels_dict) == num_frames
 
-            # currently store actions as list of [x, y, z, qw, qx, qy, qz, gripper]
-            action = [v['xyz']+v['quats']+[v['gripper']]
+            # Store actions as list of:
+            # ["joint_mobile_base_rotation", "joint_lift", "joint_arm_l0",
+            # "joint_wrist_pitch", "joint_wrist_yaw", "joint_wrist_roll", "gripper"]
+            action = [list(v['config'].values()) + [v["gripper"]]
                       for k, v in labels_dict.items()]
             action = torch.tensor(action)
 
@@ -168,7 +173,7 @@ def from_raw_to_lerobot_format(raw_dir: Path, out_dir, fps=None, video=False, de
     check_format(raw_dir)
 
     if fps is None:
-        fps = 30
+        fps = 15
 
     data_dir, episode_data_index = load_from_raw(
         raw_dir, out_dir,  fps, video, debug)
