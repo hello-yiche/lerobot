@@ -53,10 +53,6 @@ def check_format(raw_dir):
 
     for episode_dir in episode_dirs:
         for camera in ["gripper", "head"]:
-            compressed_imgs = episode_dir / f"compressed_{camera}_images"
-            png_files = list(compressed_imgs.glob("*.png"))
-            assert len(png_files) > 0
-
             compressed_video = episode_dir / \
                 f"{camera}_compressed_video_h264.mp4"
             assert compressed_video.exists()
@@ -78,14 +74,46 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
 
         # Dictionary for episode data
         ep_dict = {}
+        num_frames = 0
 
+        # Parse observation state and action
+        labels = ep_path / "labels.json"
+        with open(labels, "r") as f:
+            labels_dict = json.load(f)
+            num_frames = len(labels_dict)
+
+            actions = [
+                [
+                    data["actions"]["joint_mobile_base_rotate_by"],
+                    data["actions"]["joint_lift"],
+                    data["actions"]["joint_arm_l0"],
+                    data["actions"]["joint_wrist_roll"],
+                    data["actions"]["joint_wrist_pitch"],
+                    data["actions"]["joint_wrist_yaw"],
+                    data["actions"]["stretch_gripper"]
+                ]
+                for _, data in labels_dict.items()
+            ]
+
+            state = [
+                [
+                    data["observations"]["theta_vel"],
+                    data["observations"]["joint_lift"],
+                    data["observations"]["joint_arm_l0"],
+                    data["observations"]["joint_wrist_roll"],
+                    data["observations"]["joint_wrist_pitch"],
+                    data["observations"]["joint_wrist_yaw"],
+                    data["observations"]["stretch_gripper"]
+                ]
+                for _, data in labels_dict.items()
+            ]
+
+            ep_dict["observation.state"] = torch.tensor(state)
+            ep_dict["action"] = torch.tensor(actions)
+
+        # Parse observation images
         for camera in ["gripper", "head"]:
             img_key = f"observation.images.{camera}"
-
-            # load image frames
-            compressed_imgs = ep_path / f"compressed_{camera}_images"
-            png_files = list(compressed_imgs.glob("*.png"))
-            num_frames = len(png_files)
 
             if video:
                 video_path = ep_path / f"{camera}_compressed_video_h264.mp4"
@@ -100,6 +128,10 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                     {"path": f"videos/{fname}", "timestamp": i / fps} for i in range(num_frames)
                 ]
             else:
+                compressed_imgs = ep_path / f"compressed_{camera}_images"
+                assert compressed_imgs.exists()
+
+                png_files = list(compressed_imgs.glob("*.png"))
                 ep_dict[img_key] = [
                     PILImage.open(file) for file in png_files]
 
@@ -107,29 +139,16 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
         done = torch.zeros(num_frames, dtype=torch.bool)
         done[-1] = True
 
-        labels = ep_path / "labels.json"
-        with open(labels, "r") as f:
-            labels_dict = json.load(f)
-            assert len(labels_dict) == num_frames
+        ep_dict["episode_index"] = torch.tensor([ep_idx] * num_frames)
+        ep_dict["frame_index"] = torch.arange(0, num_frames, 1)
+        ep_dict["timestamp"] = torch.arange(0, num_frames, 1) / fps
+        ep_dict["next.done"] = done
 
-            # Store actions as list of:
-            # ["joint_mobile_base_rotation", "joint_lift", "joint_arm_l0",
-            # "joint_wrist_pitch", "joint_wrist_yaw", "joint_wrist_roll", "gripper"]
-            action = [list(v['config'].values()) + [v["gripper"]]
-                      for k, v in labels_dict.items()]
-            action = torch.tensor(action)
+        assert isinstance(ep_idx, int)
+        ep_dicts.append(ep_dict)
 
-            ep_dict["action"] = action
-            ep_dict["episode_index"] = torch.tensor([ep_idx] * num_frames)
-            ep_dict["frame_index"] = torch.arange(0, num_frames, 1)
-            ep_dict["timestamp"] = torch.arange(0, num_frames, 1) / fps
-            ep_dict["next.done"] = done
-
-            assert isinstance(ep_idx, int)
-            ep_dicts.append(ep_dict)
-
-            episode_data_index["from"].append(id_from)
-            episode_data_index["to"].append(id_from + num_frames)
+        episode_data_index["from"].append(id_from)
+        episode_data_index["to"].append(id_from + num_frames)
 
         id_from += num_frames
 
@@ -155,6 +174,10 @@ def to_hf_dataset(data_dict, video=False) -> Dataset:
 
     features["action"] = Sequence(
         length=data_dict["action"].shape[1], feature=Value(
+            dtype="float32", id=None)
+    )
+    features["observation.state"] = Sequence(
+        length=data_dict["observation.state"].shape[1], feature=Value(
             dtype="float32", id=None)
     )
     features["episode_index"] = Value(dtype="int64", id=None)
