@@ -19,6 +19,7 @@ import torch
 from omegaconf import ListConfig, OmegaConf
 
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, MultiLeRobotDataset
+from torchvision.transforms import v2
 
 
 def resolve_delta_timestamps(cfg):
@@ -73,11 +74,14 @@ def make_dataset(cfg, split: str = "train") -> LeRobotDataset | MultiLeRobotData
 
     # TODO(rcadene): add data augmentations
 
+    transforms = v2.Compose([v2.CenterCrop(320)])
+
     if isinstance(cfg.dataset_repo_id, str):
         dataset = LeRobotDataset(
             cfg.dataset_repo_id,
             split=split,
             delta_timestamps=cfg.training.get("delta_timestamps"),
+            transform=transforms,
         )
     else:
         dataset = MultiLeRobotDataset(

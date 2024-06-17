@@ -36,6 +36,8 @@ from lerobot.common.datasets.utils import (
 from lerobot.common.datasets.video_utils import VideoFrame, load_from_videos
 
 DATA_DIR = Path(os.environ["DATA_DIR"]) if "DATA_DIR" in os.environ else None
+DATA_DIR = Path(
+    "D:\hello-robot-internship\data\default_task\default_user")
 CODEBASE_VERSION = "v1.4"
 
 
@@ -152,7 +154,10 @@ class LeRobotDataset(torch.utils.data.Dataset):
             )
 
         if self.transform is not None:
-            item = self.transform(item)
+            item["observation.images.gripper"] = self.transform(
+                item["observation.images.gripper"])
+            item["observation.images.head"] = self.transform(
+                item["observation.images.head"])
 
         return item
 
