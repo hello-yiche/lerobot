@@ -150,6 +150,13 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
         episode_data_index["from"].append(id_from)
         episode_data_index["to"].append(id_from + num_frames)
 
+        # Free file descriptors
+        if not video:
+            for camera in ["gripper", "head"]:
+                img_key = f"observation.images.{camera}"
+                for file in ep_dict[img_key]:
+                    file.close()
+
         id_from += num_frames
 
         # process first episode only
