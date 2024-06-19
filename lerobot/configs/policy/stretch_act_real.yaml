@@ -17,10 +17,10 @@
 
 hydra:
   job:
-    name: stretch_act
+    name: stretch_act_stationary
 seed: 1000
 # dataset_repo_id: lerobot/aloha_static_vinh_cup
-dataset_repo_id: hellorobotinc/tennis
+dataset_repo_id: hellorobotinc/tennis_stationary
 
 override_dataset_stats:
   observation.images.gripper:
@@ -51,6 +51,30 @@ training:
   delta_timestamps:
     action: "[i / ${fps} for i in range(${policy.chunk_size})]"
 
+  image_transforms:
+    enable: true
+    # This is the maximum number of transforms (sampled from these below) that will be applied to each frame.
+    # It's an integer in the interval [1, number of available transforms].
+    max_num_transforms: 3
+    # By default, transforms are applied in Torchvision's suggested order (shown below).
+    # Set this to True to apply them in a random order.
+    random_order: false
+    brightness:
+      weight: 1
+      min_max: [0.8, 1.2]
+    contrast:
+      weight: 1
+      min_max: [0.8, 1.2]
+    saturation:
+      weight: 1
+      min_max: [0.5, 1.5]
+    hue:
+      weight: 1
+      min_max: [-0.05, 0.05]
+    sharpness:
+      weight: 1
+      min_max: [0.8, 1.2]
+
 eval:
   n_episodes: 50
   batch_size: 50
@@ -61,8 +85,8 @@ policy:
 
   # Input / output structure.
   n_obs_steps: 1
-  chunk_size: 30 # chunk_size
-  n_action_steps: 30
+  chunk_size: 15 # chunk_size
+  n_action_steps: 15
 
   input_shapes:
     # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
