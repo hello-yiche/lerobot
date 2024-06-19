@@ -103,6 +103,7 @@ def make_dataset(cfg, split: str = "train") -> LeRobotDataset | MultiLeRobotData
             split=split,
             delta_timestamps=cfg.training.get("delta_timestamps"),
             image_transforms=image_transforms,
+            video_backend=cfg.video_backend,
         )
     else:
         dataset = MultiLeRobotDataset(
@@ -110,6 +111,7 @@ def make_dataset(cfg, split: str = "train") -> LeRobotDataset | MultiLeRobotData
             split=split,
             delta_timestamps=cfg.training.get("delta_timestamps"),
             image_transforms=image_transforms,
+            video_backend=cfg.video_backend,
         )
 
     if cfg.get("override_dataset_stats"):
