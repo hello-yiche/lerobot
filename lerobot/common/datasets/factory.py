@@ -90,6 +90,12 @@ def make_dataset(cfg, split: str = "train") -> LeRobotDataset | MultiLeRobotData
             max_num_transforms=cfg_tf.max_num_transforms,
             random_order=cfg_tf.random_order,
         )
+        image_transforms = v2.Compose(
+            [
+                image_transforms,
+                v2.CenterCrop(320)
+            ]
+        )
 
     if isinstance(cfg.dataset_repo_id, str):
         dataset = LeRobotDataset(
