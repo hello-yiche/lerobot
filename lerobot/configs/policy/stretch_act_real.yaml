@@ -22,6 +22,8 @@ seed: 1000
 # dataset_repo_id: lerobot/aloha_static_vinh_cup
 dataset_repo_id: hellorobotinc/tennis_stationary
 
+video_backend: pyav
+
 override_dataset_stats:
   observation.images.gripper:
     # stats from imagenet, since we use a pretrained vision model
@@ -36,7 +38,7 @@ training:
   offline_steps: 80000
   online_steps: 0
   eval_freq: -1
-  save_freq: 1000
+  save_freq: 2000
   log_freq: 100
   num_workers: 12
   save_checkpoint: true
@@ -131,3 +133,10 @@ policy:
   # Training and loss computation.
   dropout: 0.1
   kl_weight: 10.0
+
+wandb:
+  enable: true
+  # Set to true to disable saving an artifact despite save_checkpoint == True
+  disable_artifact: true
+  project: lerobot
+  notes: ""
