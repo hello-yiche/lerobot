@@ -36,8 +36,6 @@ from lerobot.common.datasets.utils import (
 from lerobot.common.datasets.video_utils import VideoFrame, load_from_videos
 
 DATA_DIR = Path(os.environ["DATA_DIR"]) if "DATA_DIR" in os.environ else None
-DATA_DIR = Path(
-    "D:\hello-robot-internship\data\default_task\default_user")
 CODEBASE_VERSION = "v1.4"
 
 
@@ -274,7 +272,9 @@ class MultiLeRobotDataset(torch.utils.data.Dataset):
                 "multi-dataset functionality currently only keeps common keys."
             )
         for repo_id, dataset in zip(self.repo_ids, self._datasets, strict=True):
-            extra_keys = set(dataset.hf_dataset.features).difference(intersection_data_keys)
+            extra_keys = set(dataset.hf_dataset.features).difference(
+                intersection_data_keys
+            )
             logging.warning(
                 f"keys {extra_keys} of {repo_id} were disabled as they are not contained in all the "
                 "other datasets."
@@ -323,7 +323,13 @@ class MultiLeRobotDataset(torch.utils.data.Dataset):
     def features(self) -> datasets.Features:
         features = {}
         for dataset in self._datasets:
-            features.update({k: v for k, v in dataset.features.items() if k not in self.disabled_data_keys})
+            features.update(
+                {
+                    k: v
+                    for k, v in dataset.features.items()
+                    if k not in self.disabled_data_keys
+                }
+            )
         return features
 
     @property
@@ -384,7 +390,9 @@ class MultiLeRobotDataset(torch.utils.data.Dataset):
                 continue
             break
         else:
-            raise AssertionError("We expect the loop to break out as long as the index is within bounds.")
+            raise AssertionError(
+                "We expect the loop to break out as long as the index is within bounds."
+            )
         item = self._datasets[dataset_idx][idx - start_idx]
         item["dataset_index"] = torch.tensor(dataset_idx)
         for data_key in self.disabled_data_keys:
