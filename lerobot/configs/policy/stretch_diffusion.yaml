@@ -6,23 +6,25 @@
 
 seed: 100000
 dataset_repo_id: hellorobotinc/tennis_stationary
-
 override_dataset_stats:
-  # TODO(rcadene, alexander-soare): should we remove image stats as well? do we use a pretrained vision model?
   observation.images.gripper:
-    # stats from imagenet, since we use a pretrained vision model
-    mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
-    std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
+    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
   observation.images.head:
-    # stats from imagenet, since we use a pretrained vision model
-    mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
-    std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
+    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+  observation.images.gripper_depth:
+    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+  observation.images.head_depth:
+    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
 
 training:
-  offline_steps: 200000
+  offline_steps: 100000
   online_steps: 0
   eval_freq: -1
-  save_freq: 1000
+  save_freq: 10000
   log_freq: 250
   save_checkpoint: true
   num_workers: 12
@@ -40,6 +42,8 @@ training:
   delta_timestamps:
     observation.images.gripper: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
     observation.images.head: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
+    observation.images.gripper_depth: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
+    observation.images.head_depth: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
     observation.state: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
     action: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1 - ${policy.n_obs_steps} + ${policy.horizon})]"
 
@@ -87,6 +91,8 @@ policy:
     # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
     observation.images.gripper: [3, 320, 320]
     observation.images.head: [3, 320, 320]
+    observation.images.gripper_depth: [1, 320, 320]
+    observation.images.head_depth: [1, 320, 320]
     observation.state: ["${env.state_dim}"]
   output_shapes:
     action: ["${env.action_dim}"]
@@ -95,6 +101,8 @@ policy:
   input_normalization_modes:
     observation.images.gripper: mean_std
     observation.images.head: mean_std
+    observation.images.gripper_depth: mean_std
+    observation.images.head_depth: mean_std
     observation.state: min_max
   output_normalization_modes:
     action: min_max
@@ -114,7 +122,7 @@ policy:
   diffusion_step_embed_dim: 128
   use_film_scale_modulation: True
   # Noise scheduler.
-  noise_scheduler_type: DDPM
+  noise_scheduler_type: DDIM
   num_train_timesteps: 100
   beta_schedule: squaredcos_cap_v2
   beta_start: 0.0001
@@ -124,7 +132,7 @@ policy:
   clip_sample_range: 1.0
 
   # Inference
-  num_inference_steps: 100
+  num_inference_steps: 10
 
   # Loss computation
   do_mask_loss_for_padding: false
