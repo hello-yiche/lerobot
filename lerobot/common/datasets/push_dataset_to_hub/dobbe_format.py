@@ -31,7 +31,10 @@ import tqdm
 from datasets import Dataset, Features, Image, Sequence, Value
 from PIL import Image as PILImage
 
-from lerobot.common.datasets.push_dataset_to_hub.utils import concatenate_episodes, save_images_concurrently
+from lerobot.common.datasets.push_dataset_to_hub.utils import (
+    concatenate_episodes,
+    save_images_concurrently,
+)
 from lerobot.common.datasets.utils import (
     hf_transform_to_torch,
 )
@@ -47,14 +50,12 @@ from lerobot.common.datasets.video_utils import VideoFrame, encode_video_frames
 
 def check_format(raw_dir):
 
-    episode_dirs = [path for path in Path(
-        raw_dir).iterdir() if path.is_dir()]
+    episode_dirs = [path for path in Path(raw_dir).iterdir() if path.is_dir()]
     assert len(episode_dirs) != 0
 
     for episode_dir in episode_dirs:
         for camera in ["gripper", "head"]:
-            compressed_video = episode_dir / \
-                f"{camera}_compressed_video_h264.mp4"
+            compressed_video = episode_dir / f"{camera}_compressed_video_h264.mp4"
             assert compressed_video.exists()
 
             labels = episode_dir / "labels.json"
@@ -62,9 +63,16 @@ def check_format(raw_dir):
 
 
 def load_from_raw(raw_dir, out_dir, fps, video, debug):
-    # only frames from simulation are uncompressed
-    episode_dirs = [path for path in Path(
-        raw_dir).iterdir() if path.is_dir()]
+    # TODO: Decide how to get depths when using video
+    if video:
+        print(
+            """
+              ============================================================
+               WARNING: Depths are not currently parsed when using videos
+              ============================================================
+              """
+        )
+    episode_dirs = [path for path in Path(raw_dir).iterdir() if path.is_dir()]
 
     ep_dicts = []
     episode_data_index = {"from": [], "to": []}
@@ -90,7 +98,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                     data["actions"]["joint_wrist_roll"],
                     data["actions"]["joint_wrist_pitch"],
                     data["actions"]["joint_wrist_yaw"],
-                    data["actions"]["stretch_gripper"]
+                    data["actions"]["stretch_gripper"],
                 ]
                 for _, data in labels_dict.items()
             ]
@@ -103,7 +111,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                     data["observations"]["joint_wrist_roll"],
                     data["observations"]["joint_wrist_pitch"],
                     data["observations"]["joint_wrist_yaw"],
-                    data["observations"]["stretch_gripper"]
+                    data["observations"]["stretch_gripper"],
                 ]
                 for _, data in labels_dict.items()
             ]
@@ -114,6 +122,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
         # Parse observation images
         for camera in ["gripper", "head"]:
             img_key = f"observation.images.{camera}"
+            depth_key = f"observation.images.{camera}_depth"
 
             if video:
                 video_path = ep_path / f"{camera}_compressed_video_h264.mp4"
@@ -125,15 +134,23 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                 shutil.copy(video_path, video_dir / fname)
 
                 ep_dict[img_key] = [
-                    {"path": f"videos/{fname}", "timestamp": i / fps} for i in range(num_frames)
+                    {"path": f"videos/{fname}", "timestamp": i / fps}
+                    for i in range(num_frames)
                 ]
             else:
+                # Parse RGB images
                 compressed_imgs = ep_path / f"compressed_{camera}_images"
                 assert compressed_imgs.exists()
 
-                png_files = list(compressed_imgs.glob("*.png"))
-                ep_dict[img_key] = [
-                    PILImage.open(file) for file in png_files]
+                rgb_png = list(compressed_imgs.glob("*.png"))
+                ep_dict[img_key] = [PILImage.open(file) for file in rgb_png]
+
+                # Parse depths
+                compressed_depths = ep_path / f"compressed_{camera}_depths"
+                assert compressed_depths.exists()
+
+                depth_png = list(compressed_depths.glob("*.png"))
+                ep_dict[depth_key] = [PILImage.open(file) for file in depth_png]
 
         # last step of demonstration is considered done
         done = torch.zeros(num_frames, dtype=torch.bool)
@@ -154,7 +171,10 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
         if not video:
             for camera in ["gripper", "head"]:
                 img_key = f"observation.images.{camera}"
+                depth_key = f"observation.images.{camera}_depth"
                 for file in ep_dict[img_key]:
+                    file.close()
+                for file in ep_dict[depth_key]:
                     file.close()
 
         id_from += num_frames
@@ -180,12 +200,11 @@ def to_hf_dataset(data_dict, video=False) -> Dataset:
             features[key] = Image()
 
     features["action"] = Sequence(
-        length=data_dict["action"].shape[1], feature=Value(
-            dtype="float32", id=None)
+        length=data_dict["action"].shape[1], feature=Value(dtype="float32", id=None)
     )
     features["observation.state"] = Sequence(
-        length=data_dict["observation.state"].shape[1], feature=Value(
-            dtype="float32", id=None)
+        length=data_dict["observation.state"].shape[1],
+        feature=Value(dtype="float32", id=None),
     )
     features["episode_index"] = Value(dtype="int64", id=None)
     features["frame_index"] = Value(dtype="int64", id=None)
@@ -198,15 +217,16 @@ def to_hf_dataset(data_dict, video=False) -> Dataset:
     return hf_dataset
 
 
-def from_raw_to_lerobot_format(raw_dir: Path, out_dir, fps=None, video=False, debug=False):
+def from_raw_to_lerobot_format(
+    raw_dir: Path, out_dir, fps=None, video=False, debug=False
+):
     # sanity check
     check_format(raw_dir)
 
     if fps is None:
         fps = 15
 
-    data_dir, episode_data_index = load_from_raw(
-        raw_dir, out_dir,  fps, video, debug)
+    data_dir, episode_data_index = load_from_raw(raw_dir, out_dir, fps, video, debug)
     hf_dataset = to_hf_dataset(data_dir, video)
 
     info = {

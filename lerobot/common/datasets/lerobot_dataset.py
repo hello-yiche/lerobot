@@ -156,7 +156,8 @@ class LeRobotDataset(torch.utils.data.Dataset):
 
         if self.image_transforms is not None:
             for cam in self.camera_keys:
-                item[cam] = self.image_transforms(item[cam])
+                if "depth" not in cam:
+                    item[cam] = self.image_transforms(item[cam])
 
         return item
 
