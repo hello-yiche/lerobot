@@ -6,6 +6,7 @@
 
 seed: 100000
 dataset_repo_id: hellorobotinc/tennis_stationary
+repo_Version: main
 # override_dataset_stats:
 #   observation.images.gripper:
 #     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
