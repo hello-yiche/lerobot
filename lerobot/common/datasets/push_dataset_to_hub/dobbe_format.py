@@ -30,6 +30,7 @@ import torch
 import tqdm
 from datasets import Dataset, Features, Image, Sequence, Value
 from PIL import Image as PILImage
+import liblzfse
 
 from lerobot.common.datasets.push_dataset_to_hub.utils import (
     concatenate_episodes,
@@ -40,12 +41,8 @@ from lerobot.common.datasets.utils import (
 )
 from lerobot.common.datasets.video_utils import VideoFrame, encode_video_frames
 
-
-# def get_cameras(hdf5_data):
-#     # ignore depth channel, not currently handled
-#     # TODO(rcadene): add depth
-#     rgb_cameras = [key for key in hdf5_data["/observations/images"].keys() if "depth" not in key]  # noqa: SIM118
-#     return rgb_cameras
+# Set camera input sizes
+IMAGE_SIZE = {"gripper": (240, 320), "head": (320, 240)}
 
 
 def check_format(raw_dir):
@@ -79,16 +76,36 @@ def check_format(raw_dir):
             assert depth_bin_path.exists()
 
 
+def unpack_depth(depth_bin, num_frames, size):
+    h, w = size
+    depths = liblzfse.decompress(depth_bin.read_bytes())
+    depths = np.frombuffer(depths, dtype=np.float32).reshape((num_frames, h, w))
+    return depths
+
+
+def clip_and_normalize_depth(depths, camera):
+    # Clips and normalizes depths based on camera
+    # depths: (num_frames, h, w)
+    # camera: "gripper", "head"
+
+    if camera == "gripper":
+        depths = np.clip(depths * 1000, 0.0, 255.0)
+    elif camera == "head":
+        max = 4000.0
+        depths = np.clip(depths * 1000, 0.0, max)
+        depths *= 255.0 / max
+    else:
+        raise NotImplementedError("Unsupported camera!")
+
+    # Repeat on three channels, for concatenating with RGB images during training
+    # (num_frames, h, w, c)
+    depths = np.expand_dims(depths, axis=3)
+    depths = np.repeat(depths, 3, axis=3)
+
+    return depths
+
+
 def load_from_raw(raw_dir, out_dir, fps, video, debug):
-    # TODO: Decide how to get depths when using video
-    if video:
-        print(
-            """
-              ============================================================
-               WARNING: Depths are not currently parsed when using videos
-              ============================================================
-              """
-        )
     episode_dirs = [path for path in Path(raw_dir).iterdir() if path.is_dir()]
 
     ep_dicts = []
@@ -143,7 +160,6 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
 
             if video:
                 video_path = ep_path / f"{camera}_compressed_video_h264.mp4"
-                assert video_path.exists()
 
                 fname = f"{camera}_episode_{ep_idx:06d}.mp4"
                 video_dir = out_dir / "videos"
@@ -157,17 +173,21 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
             else:
                 # Parse RGB images
                 compressed_imgs = ep_path / f"compressed_{camera}_images"
-                assert compressed_imgs.exists()
+                assert (
+                    compressed_imgs.exists()
+                ), f"Image folder {compressed_imgs} wasn't found. Only video mode is supported."
 
                 rgb_png = list(compressed_imgs.glob("*.png"))
                 ep_dict[img_key] = [PILImage.open(file) for file in rgb_png]
 
-                # Parse depths
-                compressed_depths = ep_path / f"compressed_{camera}_depths"
-                assert compressed_depths.exists()
+            # Depth compressed binary inputs
+            depth_bin_path = ep_path / f"compressed_np_{camera}_depth_float32.bin"
+            depths = unpack_depth(depth_bin_path, num_frames, IMAGE_SIZE[camera])
+            depths = clip_and_normalize_depth(depths, camera)
 
-                depth_png = list(compressed_depths.glob("*.png"))
-                ep_dict[depth_key] = [PILImage.open(file) for file in depth_png]
+            ep_dict[depth_key] = [
+                PILImage.fromarray(x.astype(np.uint8), "RGB") for x in depths
+            ]
 
         # last step of demonstration is considered done
         done = torch.zeros(num_frames, dtype=torch.bool)
@@ -188,10 +208,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
         if not video:
             for camera in ["gripper", "head"]:
                 img_key = f"observation.images.{camera}"
-                depth_key = f"observation.images.{camera}_depth"
                 for file in ep_dict[img_key]:
-                    file.close()
-                for file in ep_dict[depth_key]:
                     file.close()
 
         id_from += num_frames
