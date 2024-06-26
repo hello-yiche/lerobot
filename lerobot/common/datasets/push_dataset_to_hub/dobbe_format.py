@@ -50,16 +50,33 @@ from lerobot.common.datasets.video_utils import VideoFrame, encode_video_frames
 
 def check_format(raw_dir):
 
+    print("Image sizes set as: ", IMAGE_SIZE)
+
     episode_dirs = [path for path in Path(raw_dir).iterdir() if path.is_dir()]
     assert len(episode_dirs) != 0
 
     for episode_dir in episode_dirs:
+
+        # States and actions json file
+        labels = episode_dir / "labels.json"
+        assert labels.exists()
+
         for camera in ["gripper", "head"]:
+
+            # Check for image folders
+            compressed_imgs = episode_dir / f"compressed_{camera}_images"
+            if not compressed_imgs.exists():
+                print(
+                    f"Image folder {compressed_imgs} wasn't found. Only video mode will be supported"
+                )
+
+            # Video files
             compressed_video = episode_dir / f"{camera}_compressed_video_h264.mp4"
             assert compressed_video.exists()
 
-            labels = episode_dir / "labels.json"
-            assert labels.exists()
+            # Depth compressed binary files
+            depth_bin_path = episode_dir / f"compressed_np_{camera}_depth_float32.bin"
+            assert depth_bin_path.exists()
 
 
 def load_from_raw(raw_dir, out_dir, fps, video, debug):
