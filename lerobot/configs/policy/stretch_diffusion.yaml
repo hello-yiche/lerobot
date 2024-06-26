@@ -6,19 +6,19 @@
 
 seed: 100000
 dataset_repo_id: hellorobotinc/tennis_stationary
-override_dataset_stats:
-  observation.images.gripper:
-    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-  observation.images.head:
-    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-  observation.images.gripper_depth:
-    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-  observation.images.head_depth:
-    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+# override_dataset_stats:
+#   observation.images.gripper:
+#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+#   observation.images.head:
+#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+#   observation.images.gripper_depth:
+#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+#   observation.images.head_depth:
+#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
 
 training:
   offline_steps: 100000
