@@ -21,6 +21,7 @@ from typing import Callable
 import datasets
 import torch
 import torch.utils
+from torchvision.transforms import v2
 
 from lerobot.common.datasets.compute_stats import aggregate_stats
 from lerobot.common.datasets.utils import (
@@ -56,6 +57,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
         self.root = root
         self.split = split
         self.image_transforms = image_transforms
+        self.resize_transforms = v2.CenterCrop(320)
         self.delta_timestamps = delta_timestamps
         # load data from hub or locally when root is provided
         # TODO(rcadene, aliberts): implement faster transfer
@@ -158,6 +160,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
             for cam in self.camera_keys:
                 if "depth" not in cam:
                     item[cam] = self.image_transforms(item[cam])
+                item[cam] = self.resize_transforms(item[cam])
 
         return item
 
