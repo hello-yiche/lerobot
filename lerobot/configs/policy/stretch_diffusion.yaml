@@ -91,8 +91,8 @@ policy:
     # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
     observation.images.gripper: [3, 320, 320]
     observation.images.head: [3, 320, 320]
-    observation.images.gripper_depth: [1, 320, 320]
-    observation.images.head_depth: [1, 320, 320]
+    observation.images.gripper_depth: [3, 320, 320]
+    observation.images.head_depth: [3, 320, 320]
     observation.state: ["${env.state_dim}"]
   output_shapes:
     action: ["${env.action_dim}"]
