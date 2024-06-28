@@ -178,7 +178,13 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                 ), f"Image folder {compressed_imgs} wasn't found. Only video mode is supported."
 
                 rgb_png = list(compressed_imgs.glob("*.png"))
-                ep_dict[img_key] = [PILImage.open(file) for file in rgb_png]
+
+                images = []
+                for file in rgb_png:
+                    with PILImage.open(file) as f:
+                        images.append(f)
+
+                ep_dict[img_key] = images
 
             # Depth compressed binary inputs
             depth_bin_path = ep_path / f"compressed_np_{camera}_depth_float32.bin"
@@ -203,13 +209,6 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
 
         episode_data_index["from"].append(id_from)
         episode_data_index["to"].append(id_from + num_frames)
-
-        # Free file descriptors
-        if not video:
-            for camera in ["gripper", "head"]:
-                img_key = f"observation.images.{camera}"
-                for file in ep_dict[img_key]:
-                    file.close()
 
         id_from += num_frames
 
