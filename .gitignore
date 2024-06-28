@@ -13,6 +13,9 @@ outputs
 # VS Code
 .vscode
 
+# Vim
+*.swp
+
 # HPC
 nautilus/*.yaml
 *.key

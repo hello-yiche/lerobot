@@ -56,7 +56,7 @@ def check_format(raw_dir):
 
         # States and actions json file
         labels = episode_dir / "labels.json"
-        assert labels.exists()
+        assert labels.exists(), f"Labels file {labels} wasn't found"
 
         for camera in ["gripper", "head"]:
 
@@ -139,7 +139,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
 
             state = [
                 [
-                    data["observations"]["theta_vel"],
+                    data["observations"]["joint_mobile_base_rotation"],
                     data["observations"]["joint_lift"],
                     data["observations"]["joint_arm_l0"],
                     data["observations"]["joint_wrist_roll"],
