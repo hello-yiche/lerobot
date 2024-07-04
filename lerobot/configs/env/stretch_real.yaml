@@ -4,9 +4,9 @@ fps: 15
 
 env:
   name: stretch_real
-  task: stretch_tennis_v0
-  state_dim: 7
-  action_dim: 7
+  task: stretch_kitchen_cabinet
+  state_dim: 12
+  action_dim: 9
   fps: ${fps}
   episode_length: 400
   gym:

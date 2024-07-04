@@ -7,13 +7,13 @@
 seed: 100000
 dataset_repo_id: hellorobotinc/tennis_stationary
 repo_version: main
-# override_dataset_stats:
-#   observation.images.gripper:
-#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#   observation.images.head:
-#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+override_dataset_stats:
+  observation.images.gripper:
+    mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
+  observation.images.head:
+    mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
 #   observation.images.gripper_depth:
 #     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
 #     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
@@ -136,5 +136,5 @@ wandb:
   enable: true
   # Set to true to disable saving an artifact despite save_checkpoint == True
   disable_artifact: true
-  project: lerobot-diffusion-policy
+  project: diffusion-kitchen-demo
   notes: "no depth"
