@@ -123,11 +123,6 @@ def clip_and_normalize_depth(depths, camera):
     else:
         raise NotImplementedError("Unsupported camera!")
 
-    # Repeat on three channels, for concatenating with RGB images during training
-    # (num_frames, h, w, c)
-    depths = np.expand_dims(depths, axis=3)
-    depths = np.repeat(depths, 3, axis=3)
-
     return depths
 
 
@@ -205,6 +200,11 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
             depth_bin_path = ep_path / f"compressed_np_{camera}_depth_float32.bin"
             depths = unpack_depth(depth_bin_path, num_frames, IMAGE_SIZE[camera])
             depths = clip_and_normalize_depth(depths, camera)
+
+            # Repeat on three channels, for concatenating with RGB images during training
+            # (num_frames, h, w) --> (num_frames, h, w, c)
+            depths = np.expand_dims(depths, axis=3)
+            depths = np.repeat(depths, 3, axis=3)
 
             ep_dict[depth_key] = [
                 PILImage.fromarray(x.astype(np.uint8), "RGB") for x in depths

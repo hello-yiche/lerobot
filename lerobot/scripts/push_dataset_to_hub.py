@@ -177,7 +177,8 @@ def push_dataset_to_hub(
             if force_override:
                 shutil.rmtree(local_dir)
             else:
-                raise ValueError(f"`local_dir` already exists ({local_dir}). Use `--force-override 1`.")
+                raise ValueError(
+                    f"`local_dir` already exists ({local_dir}). Use `--force-override 1`.")
 
         meta_data_dir = local_dir / "meta_data"
         videos_dir = local_dir / "videos"
@@ -207,7 +208,8 @@ def push_dataset_to_hub(
     stats = compute_stats(lerobot_dataset, batch_size, num_workers)
 
     if local_dir:
-        hf_dataset = hf_dataset.with_format(None)  # to remove transforms that cant be saved
+        # to remove transforms that cant be saved
+        hf_dataset = hf_dataset.with_format(None)
         hf_dataset.save_to_disk(str(local_dir / "train"))
 
     if push_to_hub or local_dir:
