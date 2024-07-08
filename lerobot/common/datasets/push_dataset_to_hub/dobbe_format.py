@@ -44,6 +44,32 @@ from lerobot.common.datasets.video_utils import VideoFrame, encode_video_frames
 # Set camera input sizes
 IMAGE_SIZE = {"gripper": (240, 320), "head": (320, 240)}
 
+ACTION_ORDER = [
+    "joint_mobile_base_translation",
+    "joint_mobile_base_translate_by",
+    "joint_mobile_base_rotate_by",
+    "joint_lift",
+    "joint_arm_l0",
+    "joint_wrist_roll",
+    "joint_wrist_pitch",
+    "joint_wrist_yaw",
+    "stretch_gripper",
+]
+
+STATE_ORDER = [
+    "base_x",
+    "base_x_vel",
+    "base_y",
+    "base_y_vel",
+    "base_theta",
+    "base_theta_vel",
+    "joint_lift",
+    "joint_arm_l0",
+    "joint_wrist_roll",
+    "joint_wrist_pitch",
+    "joint_wrist_yaw",
+    "stretch_gripper",
+]
 
 def check_format(raw_dir):
 
@@ -109,6 +135,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
     episode_dirs = [path for path in Path(raw_dir).iterdir() if path.is_dir()]
 
     ep_dicts = []
+    ep_metadata = []
     episode_data_index = {"from": [], "to": []}
 
     id_from = 0
@@ -126,26 +153,14 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
 
             actions = [
                 [
-                    data["actions"]["joint_mobile_base_rotate_by"],
-                    data["actions"]["joint_lift"],
-                    data["actions"]["joint_arm_l0"],
-                    data["actions"]["joint_wrist_roll"],
-                    data["actions"]["joint_wrist_pitch"],
-                    data["actions"]["joint_wrist_yaw"],
-                    data["actions"]["stretch_gripper"],
+                    data["actions"][x] for x in ACTION_ORDER
                 ]
                 for _, data in labels_dict.items()
             ]
 
             state = [
                 [
-                    data["observations"]["theta_vel"],
-                    data["observations"]["joint_lift"],
-                    data["observations"]["joint_arm_l0"],
-                    data["observations"]["joint_wrist_roll"],
-                    data["observations"]["joint_wrist_pitch"],
-                    data["observations"]["joint_wrist_yaw"],
-                    data["observations"]["stretch_gripper"],
+                    data["observations"][x] for x in STATE_ORDER
                 ]
                 for _, data in labels_dict.items()
             ]
@@ -195,6 +210,12 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                 PILImage.fromarray(x.astype(np.uint8), "RGB") for x in depths
             ]
 
+        # Append episode metadata
+        metadata = ep_path / "configs.json"
+        with open(metadata, "r") as f:
+            metadata_dict = json.load(f)
+            ep_metadata.append(metadata_dict)
+
         # last step of demonstration is considered done
         done = torch.zeros(num_frames, dtype=torch.bool)
         done[-1] = True
@@ -219,7 +240,14 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
     data_dict = {}
     data_dict = concatenate_episodes(ep_dicts)
 
-    return data_dict, episode_data_index
+    info = {}
+    info["episode_metadata"] = ep_metadata
+    info["action_order"] = ACTION_ORDER
+    info["state_order"] = STATE_ORDER
+    info["image_size"] = IMAGE_SIZE
+    info["num_episodes"] = len(episode_dirs)
+
+    return data_dict, episode_data_index, info
 
 
 def to_hf_dataset(data_dict, video=False) -> Dataset:
@@ -259,11 +287,11 @@ def from_raw_to_lerobot_format(
     if fps is None:
         fps = 15
 
-    data_dir, episode_data_index = load_from_raw(raw_dir, out_dir, fps, video, debug)
+    data_dir, episode_data_index, info = load_from_raw(
+        raw_dir, out_dir, fps, video, debug)
     hf_dataset = to_hf_dataset(data_dir, video)
 
-    info = {
-        "fps": fps,
-        "video": video,
-    }
+    info["fps"] = fps
+    info["video"] = video
+
     return hf_dataset, episode_data_index, info
