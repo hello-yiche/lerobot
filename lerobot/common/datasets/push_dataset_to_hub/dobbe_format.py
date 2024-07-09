@@ -109,21 +109,18 @@ def unpack_depth(depth_bin, num_frames, size):
     return depths
 
 
-def clip_and_normalize_depth(depths, camera):
-    # Clips and normalizes depths based on camera
+def clip_and_normalize_depth(depths):
+    # Clips depth to three different scales: 1mm, 10mm, 20mm
     # depths: (num_frames, h, w)
-    # camera: "gripper", "head"
 
-    if camera == "gripper":
-        depths = np.clip(depths * 1000, 0.0, 255.0)
-    elif camera == "head":
-        max = 4000.0
-        depths = np.clip(depths * 1000, 0.0, max)
-        depths *= 255.0 / max
-    else:
-        raise NotImplementedError("Unsupported camera!")
+    depths_1_mm = np.clip(depths * 1000, 0.0, 255.0)
+    depths_10_mm = np.clip(depths * 100, 0.0, 255.0)
+    depths_20_mm = np.clip(depths * 50, 0.0, 255.0)
 
-    return depths
+    depths_stacked = np.stack(
+        [depths_1_mm, depths_10_mm, depths_20_mm], axis=3)
+
+    return depths_stacked
 
 
 def load_from_raw(raw_dir, out_dir, fps, video, debug):
@@ -197,14 +194,11 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                 ep_dict[img_key] = images
 
             # Depth compressed binary inputs
-            depth_bin_path = ep_path / f"compressed_np_{camera}_depth_float32.bin"
-            depths = unpack_depth(depth_bin_path, num_frames, IMAGE_SIZE[camera])
-            depths = clip_and_normalize_depth(depths, camera)
-
-            # Repeat on three channels, for concatenating with RGB images during training
-            # (num_frames, h, w) --> (num_frames, h, w, c)
-            depths = np.expand_dims(depths, axis=3)
-            depths = np.repeat(depths, 3, axis=3)
+            depth_bin_path = ep_path / \
+                f"compressed_np_{camera}_depth_float32.bin"
+            depths = unpack_depth(
+                depth_bin_path, num_frames, IMAGE_SIZE[camera])
+            depths = clip_and_normalize_depth(depths)
 
             ep_dict[depth_key] = [
                 PILImage.fromarray(x.astype(np.uint8), "RGB") for x in depths
