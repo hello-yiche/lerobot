@@ -50,13 +50,19 @@ def get_policy_and_config_classes(name: str) -> tuple[Policy, object]:
         from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 
         return DiffusionPolicy, DiffusionConfig
+    elif name == "diffusion_depth":
+        from lerobot.common.policies.diffusion_depth.configuration_diffusion import DiffusionConfig
+        from lerobot.common.policies.diffusion_depth.modeling_diffusion import DiffusionPolicy
+
+        return DiffusionPolicy, DiffusionConfig
     elif name == "act":
         from lerobot.common.policies.act.configuration_act import ACTConfig
         from lerobot.common.policies.act.modeling_act import ACTPolicy
 
         return ACTPolicy, ACTConfig
     else:
-        raise NotImplementedError(f"Policy with name {name} is not implemented.")
+        raise NotImplementedError(
+            f"Policy with name {name} is not implemented.")
 
 
 def make_policy(
@@ -75,9 +81,11 @@ def make_policy(
             policy. Therefore, this argument is mutually exclusive with `pretrained_policy_name_or_path`.
     """
     if not (pretrained_policy_name_or_path is None) ^ (dataset_stats is None):
-        raise ValueError("Only one of `pretrained_policy_name_or_path` and `dataset_stats` may be provided.")
+        raise ValueError(
+            "Only one of `pretrained_policy_name_or_path` and `dataset_stats` may be provided.")
 
-    policy_cls, policy_cfg_class = get_policy_and_config_classes(hydra_cfg.policy.name)
+    policy_cls, policy_cfg_class = get_policy_and_config_classes(
+        hydra_cfg.policy.name)
 
     policy_cfg = _policy_cfg_from_hydra_cfg(policy_cfg_class, hydra_cfg)
     if pretrained_policy_name_or_path is None:
@@ -90,7 +98,8 @@ def make_policy(
         # weights which are then loaded into a fresh policy with the desired config. This PR in huggingface_hub should
         # make it possible to avoid the hack: https://github.com/huggingface/huggingface_hub/pull/2274.
         policy = policy_cls(policy_cfg)
-        policy.load_state_dict(policy_cls.from_pretrained(pretrained_policy_name_or_path).state_dict())
+        policy.load_state_dict(policy_cls.from_pretrained(
+            pretrained_policy_name_or_path).state_dict())
 
     policy.to(get_safe_torch_device(hydra_cfg.device))
 
