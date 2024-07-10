@@ -75,7 +75,7 @@ policy:
   # Architecture / modeling.
   # Vision backbone.
   vision_backbone: resnet18
-  crop_shape: [320, 320]
+  crop_shape: [240, 320]
   crop_is_random: True
   pretrained_backbone_weights: null
   use_group_norm: True
@@ -99,3 +99,10 @@ policy:
   secondary_code_loss_weight: 0.5
   bet_softmax_temperature: 0.1
   sequentially_select: False
+
+wandb:
+  enable: true
+  # Set to true to disable saving an artifact despite save_checkpoint == True
+  disable_artifact: true
+  project: vqbet-kitchen-demo
+  notes: "gripper only"
