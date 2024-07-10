@@ -9,9 +9,9 @@ override_dataset_stats:
   observation.images.gripper:
     mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
     std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
-  observation.images.head:
-    mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
-    std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
+  # observation.images.head:
+  #   mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
+  #   std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
 
 training:
   offline_steps: 250000
@@ -40,7 +40,7 @@ training:
 
   delta_timestamps:
     observation.images.gripper: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
-    observation.images.head: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
+    # observation.images.head: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
     observation.state: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
     action: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, ${policy.n_action_pred_token} + ${policy.action_chunk_size} - 1)]"
 
@@ -58,8 +58,8 @@ policy:
 
   input_shapes:
     # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
-    observation.images.gripper: [3, 320, 320]
-    observation.images.head: [3, 320, 320]
+    observation.images.gripper: [3, 240, 320]
+    # observation.images.head: [3, 320, 320]
     observation.state: ["${env.state_dim}"]
   output_shapes:
     action: ["${env.action_dim}"]
@@ -67,7 +67,7 @@ policy:
   # Normalization / Unnormalization
   input_normalization_modes:
     observation.images.gripper: mean_std
-    observation.images.head: mean_std
+    # observation.images.head: mean_std
     observation.state: min_max
   output_normalization_modes:
     action: min_max
