@@ -5,24 +5,24 @@
 #       https://github.com/huggingface/lerobot/pull/134 for more details.
 
 seed: 100000
-dataset_repo_id: hellorobotinc/tennis_stationary
+dataset_repo_id: hellorobotinc/kitchen_demo
 repo_version: main
-# override_dataset_stats:
-#   observation.images.gripper:
-#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#   observation.images.head:
-#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#   observation.images.gripper_depth:
-#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#   observation.images.head_depth:
-#     mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
-#     std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+override_dataset_stats:
+  observation.images.gripper:
+    mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
+  observation.images.head:
+    mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]] # (c,1,1)
+  observation.images.gripper_depth:
+    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+  observation.images.head_depth:
+    mean: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
+    std: [[[0.5]], [[0.5]], [[0.5]]] # (c,1,1)
 
 training:
-  offline_steps: 100000
+  offline_steps: 200000
   online_steps: 0
   eval_freq: -1
   save_freq: 10000
@@ -81,7 +81,7 @@ eval:
   batch_size: 50
 
 policy:
-  name: diffusion
+  name: diffusion_depth
 
   # Input / output structure.
   n_obs_steps: 2
@@ -123,7 +123,7 @@ policy:
   diffusion_step_embed_dim: 128
   use_film_scale_modulation: True
   # Noise scheduler.
-  noise_scheduler_type: DDIM
+  noise_scheduler_type: DDPM
   num_train_timesteps: 100
   beta_schedule: squaredcos_cap_v2
   beta_start: 0.0001
@@ -133,7 +133,7 @@ policy:
   clip_sample_range: 1.0
 
   # Inference
-  num_inference_steps: 10
+  num_inference_steps: 100
 
   # Loss computation
   do_mask_loss_for_padding: false
@@ -142,5 +142,5 @@ wandb:
   enable: true
   # Set to true to disable saving an artifact despite save_checkpoint == True
   disable_artifact: true
-  project: lerobot-diffusion-policy
+  project: diffusion-kitchen-demo
   notes: ""

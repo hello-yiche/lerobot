@@ -118,7 +118,7 @@ def clip_and_normalize_depth(depths):
     depths_20_mm = np.clip(depths * 50, 0.0, 255.0)
 
     depths_stacked = np.stack(
-        [depths_1_mm, depths_10_mm, depths_20_mm], axis=3)
+        [depths_1_mm, depths_10_mm, depths_20_mm], axis=-1)
 
     return depths_stacked
 

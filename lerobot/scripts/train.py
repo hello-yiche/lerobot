@@ -69,7 +69,7 @@ def make_optimizer_and_scheduler(cfg, policy):
             optimizer_params_dicts, lr=cfg.training.lr, weight_decay=cfg.training.weight_decay
         )
         lr_scheduler = None
-    elif cfg.policy.name == "diffusion":
+    elif cfg.policy.name == "diffusion" or cfg.policy.name == "diffusion_depth":
         optimizer = torch.optim.Adam(
             policy.diffusion.parameters(),
             cfg.training.lr,
@@ -85,6 +85,7 @@ def make_optimizer_and_scheduler(cfg, policy):
             num_warmup_steps=cfg.training.lr_warmup_steps,
             num_training_steps=cfg.training.offline_steps,
         )
+
     elif policy.name == "tdmpc":
         optimizer = torch.optim.Adam(policy.parameters(), cfg.training.lr)
         lr_scheduler = None
@@ -174,7 +175,8 @@ def log_train_info(logger: Logger, info, step, cfg, dataset, is_offline):
         f"lr:{lr:0.1e}",
         # in seconds
         f"updt_s:{update_s:.3f}",
-        f"data_s:{dataloading_s:.3f}",  # if not ~0, you are bottlenecked by cpu or io
+        # if not ~0, you are bottlenecked by cpu or io
+        f"data_s:{dataloading_s:.3f}",
     ]
     logging.info(" ".join(log_items))
 
@@ -237,7 +239,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
                 "You have set resume=True, but there is no model checkpoint in "
                 f"{Logger.get_last_checkpoint_dir(out_dir)}"
             )
-        checkpoint_cfg_path = str(Logger.get_last_pretrained_model_dir(out_dir) / "config.yaml")
+        checkpoint_cfg_path = str(
+            Logger.get_last_pretrained_model_dir(out_dir) / "config.yaml")
         logging.info(
             colored(
                 "You have set resume=True, indicating that you wish to resume a run",
@@ -250,7 +253,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
         # Check for differences between the checkpoint configuration and provided configuration.
         # Hack to resolve the delta_timestamps ahead of time in order to properly diff.
         resolve_delta_timestamps(cfg)
-        diff = DeepDiff(OmegaConf.to_container(checkpoint_cfg), OmegaConf.to_container(cfg))
+        diff = DeepDiff(OmegaConf.to_container(
+            checkpoint_cfg), OmegaConf.to_container(cfg))
         # Ignore the `resume` and parameters.
         if "values_changed" in diff and "root['resume']" in diff["values_changed"]:
             del diff["values_changed"]["root['resume']"]
@@ -304,7 +308,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     policy = make_policy(
         hydra_cfg=cfg,
         dataset_stats=offline_dataset.stats if not cfg.resume else None,
-        pretrained_policy_name_or_path=str(logger.last_pretrained_model_dir) if cfg.resume else None,
+        pretrained_policy_name_or_path=str(
+            logger.last_pretrained_model_dir) if cfg.resume else None,
     )
     assert isinstance(policy, nn.Module)
     # Create optimizer and scheduler
@@ -336,7 +341,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
 
     # Note: this helper will be used in offline and online training loops.
     def evaluate_and_checkpoint_if_needed(step):
-        _num_digits = max(6, len(str(cfg.training.offline_steps + cfg.training.online_steps)))
+        _num_digits = max(
+            6, len(str(cfg.training.offline_steps + cfg.training.online_steps)))
         step_identifier = f"{step:0{_num_digits}d}"
 
         if cfg.training.eval_freq > 0 and step % cfg.training.eval_freq == 0:
@@ -347,7 +353,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
                     eval_env,
                     policy,
                     cfg.eval.n_episodes,
-                    videos_dir=Path(out_dir) / "eval" / f"videos_step_{step_identifier}",
+                    videos_dir=Path(out_dir) / "eval" /
+                    f"videos_step_{step_identifier}",
                     max_episodes_rendered=4,
                     start_seed=cfg.seed,
                 )
