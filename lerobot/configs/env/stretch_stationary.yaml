@@ -1,0 +1,13 @@
+# @package _global_
+
+fps: 15
+
+env:
+  name: stretch_stationary
+  task: stationary_base
+  state_dim: 7
+  action_dim: 7
+  fps: ${fps}
+  episode_length: 400
+  gym:
+    fps: ${fps}

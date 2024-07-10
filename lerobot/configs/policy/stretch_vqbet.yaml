@@ -21,7 +21,7 @@ training:
   log_freq: 200
   save_checkpoint: true
 
-  batch_size: 128
+  batch_size: 64
   grad_clip_norm: 10
   lr: 1.0e-4
   lr_scheduler: cosine
