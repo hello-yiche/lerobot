@@ -4,6 +4,7 @@
 
 seed: 100000
 dataset_repo_id: hellorobotinc/kitchen_demo
+repo_version: main
 override_dataset_stats:
   observation.images.gripper:
     mean: [[[0.485]], [[0.456]], [[0.406]]] # (c,1,1)
