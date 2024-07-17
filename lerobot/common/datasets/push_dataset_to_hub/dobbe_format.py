@@ -31,6 +31,7 @@ import tqdm
 from datasets import Dataset, Features, Image, Sequence, Value
 from PIL import Image as PILImage
 import liblzfse
+from scipy import ndimage
 
 from lerobot.common.datasets.push_dataset_to_hub.utils import (
     concatenate_episodes,
@@ -43,6 +44,8 @@ from lerobot.common.datasets.video_utils import VideoFrame, encode_video_frames
 
 # Set camera input sizes
 IMAGE_SIZE = {"gripper": (240, 320), "head": (320, 240)}
+
+DEPTH_MEDIAN_FILTER_K = 11
 
 ACTION_ORDER = [
     "joint_mobile_base_translation",
@@ -105,17 +108,21 @@ def check_format(raw_dir):
 def unpack_depth(depth_bin, num_frames, size):
     h, w = size
     depths = liblzfse.decompress(depth_bin.read_bytes())
-    depths = np.frombuffer(depths, dtype=np.float32).reshape((num_frames, h, w))
+    depths = np.frombuffer(
+        depths, dtype=np.float32).reshape((num_frames, h, w))
     return depths
 
 
-def clip_and_normalize_depth(depths):
+def clip_and_normalize_depth(depths, median_filter_k=None):
     # Clips depth to three different scales: 1mm, 10mm, 20mm
     # depths: (num_frames, h, w)
+    if median_filter_k is not None:
+        depths = ndimage.median_filter(
+            depths, axes=(1, 2), size=median_filter_k)
 
-    depths_1_mm = np.clip(depths * 1000, 0.0, 255.0)
-    depths_10_mm = np.clip(depths * 100, 0.0, 255.0)
-    depths_20_mm = np.clip(depths * 50, 0.0, 255.0)
+    depths_1_mm = np.uint8(np.clip(depths * 1000, 0.0, 255.0))
+    depths_10_mm = np.uint8(np.clip(depths * 100, 0.0, 255.0))
+    depths_20_mm = np.uint8(np.clip(depths * 50, 0.0, 255.0))
 
     depths_stacked = np.stack(
         [depths_1_mm, depths_10_mm, depths_20_mm], axis=-1)
@@ -198,7 +205,8 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                 f"compressed_np_{camera}_depth_float32.bin"
             depths = unpack_depth(
                 depth_bin_path, num_frames, IMAGE_SIZE[camera])
-            depths = clip_and_normalize_depth(depths)
+
+            depths = clip_and_normalize_depth(depths, DEPTH_MEDIAN_FILTER_K)
 
             ep_dict[depth_key] = [
                 PILImage.fromarray(x.astype(np.uint8), "RGB") for x in depths
@@ -239,6 +247,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
     info["action_order"] = ACTION_ORDER
     info["state_order"] = STATE_ORDER
     info["image_size"] = IMAGE_SIZE
+    info["depth_median_filter_k"] = DEPTH_MEDIAN_FILTER_K
     info["num_episodes"] = len(episode_dirs)
 
     return data_dict, episode_data_index, info
