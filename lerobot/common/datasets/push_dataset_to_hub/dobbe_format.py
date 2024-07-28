@@ -192,6 +192,7 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
                 ), f"Image folder {compressed_imgs} wasn't found. Only video mode is supported."
 
                 rgb_png = list(compressed_imgs.glob("*.png"))
+                rgb_png.sort()
 
                 images = []
                 for file in rgb_png:

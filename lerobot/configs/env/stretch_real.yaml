@@ -1,11 +1,11 @@
 # @package _global_
 
-fps: 15
+fps: 6
 
 env:
   name: stretch_real
-  task: stretch_kitchen_cabinet
-  state_dim: 12
+  task: stretch_baseX
+  state_dim: 9
   action_dim: 9
   fps: ${fps}
   episode_length: 400
