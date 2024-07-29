@@ -48,9 +48,9 @@ IMAGE_SIZE = {"gripper": (240, 320), "head": (320, 240)}
 DEPTH_MEDIAN_FILTER_K = 11
 
 ACTION_ORDER = [
-    "joint_mobile_base_translation",
-    "joint_mobile_base_translate_by",
-    "joint_mobile_base_rotate_by",
+    "base_x_joint",
+    "base_y_joint",
+    "base_theta_joint",
     "joint_lift",
     "joint_arm_l0",
     "joint_wrist_roll",
@@ -61,19 +61,42 @@ ACTION_ORDER = [
 
 STATE_ORDER = [
     "base_x",
-    "base_x_vel",
     "base_y",
-    "base_y_vel",
     "base_theta",
-    "base_theta_vel",
-    "joint_lift",
-    "joint_arm_l0",
-    "joint_wrist_roll",
-    "joint_wrist_pitch",
-    "joint_wrist_yaw",
-    "stretch_gripper",
+    "lift",
+    "arm",
+    "wrist_roll",
+    "wrist_pitch",
+    "wrist_yaw",
+    "gripper_finger_right",
 ]
 
+# ACTION_ORDER = [
+#     "joint_mobile_base_translation",
+#     "joint_mobile_base_translate_by",
+#     "joint_mobile_base_rotate_by",
+#     "joint_lift",
+#     "joint_arm_l0",
+#     "joint_wrist_roll",
+#     "joint_wrist_pitch",
+#     "joint_wrist_yaw",
+#     "stretch_gripper",
+# ]
+
+# STATE_ORDER = [
+#     "base_x",
+#     "base_x_vel",
+#     "base_y",
+#     "base_y_vel",
+#     "base_theta",
+#     "base_theta_vel",
+#     "joint_lift",
+#     "joint_arm_l0",
+#     "joint_wrist_roll",
+#     "joint_wrist_pitch",
+#     "joint_wrist_yaw",
+#     "stretch_gripper",
+# ]
 def check_format(raw_dir):
 
     print("Image sizes set as: ", IMAGE_SIZE)
@@ -97,11 +120,13 @@ def check_format(raw_dir):
                 )
 
             # Video files
-            compressed_video = episode_dir / f"{camera}_compressed_video_h264.mp4"
+            compressed_video = episode_dir / \
+                f"{camera}_compressed_video_h264.mp4"
             assert compressed_video.exists()
 
             # Depth compressed binary files
-            depth_bin_path = episode_dir / f"compressed_np_{camera}_depth_float32.bin"
+            depth_bin_path = episode_dir / \
+                f"compressed_np_{camera}_depth_float32.bin"
             assert depth_bin_path.exists()
 
 
