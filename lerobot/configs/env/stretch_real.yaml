@@ -6,7 +6,7 @@ env:
   name: stretch_real
   task: stretch_baseX
   state_dim: 9
-  action_dim: 9
+  action_dim: 10
   fps: ${fps}
   episode_length: 400
   gym:
