@@ -175,12 +175,15 @@ def load_from_raw(raw_dir, out_dir, fps, video, debug):
             labels_dict = json.load(f)
             num_frames = len(labels_dict)
 
+            progress_variable = np.linspace(0, 1, num_frames).tolist()
+
             actions = [
-                [
+                ([
                     data["actions"][x] for x in ACTION_ORDER
-                ]
-                for _, data in labels_dict.items()
+                ]+[progress_variable[int(frame_idx)]])
+                for frame_idx, data in labels_dict.items()
             ]
+
 
             state = [
                 [
