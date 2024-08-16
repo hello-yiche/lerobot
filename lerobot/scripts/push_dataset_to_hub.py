@@ -40,60 +40,6 @@ python lerobot/scripts/push_dataset_to_hub.py \
 --raw-format umi_zarr \
 --repo-id lerobot/umi_cup_in_the_wild
 ```
-
-**WARNING: Updating an existing dataset**
-
-If you want to update an existing dataset, you need to change the `CODEBASE_VERSION` from `lerobot_dataset.py`
-before running `push_dataset_to_hub.py`. This is especially useful if you introduce a breaking change
-intentionally or not (i.e. something not backward compatible such as modifying the reward functions used,
-deleting some frames at the end of an episode, etc.). That way, people running a previous version of the
-codebase won't be affected by your change and backward compatibility is maintained.
-
-For instance, Pusht has many versions to maintain backward compatibility between LeRobot codebase versions:
-- [v1.0](https://huggingface.co/datasets/lerobot/pusht/tree/v1.0)
-- [v1.1](https://huggingface.co/datasets/lerobot/pusht/tree/v1.1)
-- [v1.2](https://huggingface.co/datasets/lerobot/pusht/tree/v1.2)
-- [v1.3](https://huggingface.co/datasets/lerobot/pusht/tree/v1.3)
-- [v1.4](https://huggingface.co/datasets/lerobot/pusht/tree/v1.4)
-- [v1.5](https://huggingface.co/datasets/lerobot/pusht/tree/v1.5) <-- last version
-- [main](https://huggingface.co/datasets/lerobot/pusht/tree/main)  <-- points to the last version
-
-However, you will need to update the version of ALL the other datasets so that they have the new
-`CODEBASE_VERSION` as a branch in their hugging face dataset repository. Don't worry, there is an easy way
-that doesn't require to run `push_dataset_to_hub.py`. You can just "branch-out" from the `main` branch on HF
-dataset repo by running this script which corresponds to a `git checkout -b` (so no copy or upload needed):
-
-```python
-import os
-
-from huggingface_hub import create_branch, hf_hub_download
-from huggingface_hub.utils._errors import RepositoryNotFoundError
-
-from lerobot import available_datasets
-from lerobot.common.datasets.lerobot_dataset import CODEBASE_VERSION
-
-os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"  # makes it easier to see the print-out below
-
-NEW_CODEBASE_VERSION = "v1.5"  # REPLACE THIS WITH YOUR DESIRED VERSION
-
-for repo_id in available_datasets:
-    # First check if the newer version already exists.
-    try:
-        hf_hub_download(
-            repo_id=repo_id, repo_type="dataset", filename=".gitattributes", revision=NEW_CODEBASE_VERSION
-        )
-        print(f"Found existing branch for {repo_id}. Please contact a member of the core LeRobot team.")
-        print("Exiting early")
-        break
-    except RepositoryNotFoundError:
-        # Now create a branch.
-        create_branch(repo_id, repo_type="dataset", branch=NEW_CODEBASE_VERSION, revision=CODEBASE_VERSION)
-        print(f"{repo_id} successfully updated")
-
-```
-
-On the other hand, if you are pushing a new dataset, you don't need to worry about any of the instructions
-above, nor to be compatible with previous codebase versions.
 """
 
 import argparse
@@ -104,12 +50,13 @@ from pathlib import Path
 from typing import Any
 
 import torch
-from huggingface_hub import HfApi, create_branch
+from huggingface_hub import HfApi
 from safetensors.torch import save_file
 
 from lerobot.common.datasets.compute_stats import compute_stats
 from lerobot.common.datasets.lerobot_dataset import CODEBASE_VERSION, LeRobotDataset
-from lerobot.common.datasets.utils import flatten_dict
+from lerobot.common.datasets.push_dataset_to_hub.utils import check_repo_id
+from lerobot.common.datasets.utils import create_branch, create_lerobot_dataset_card, flatten_dict
 
 
 def get_from_raw_to_lerobot_format_fn(raw_format: str):
@@ -170,6 +117,14 @@ def push_meta_data_to_hub(repo_id: str, meta_data_dir: str | Path, revision: str
     )
 
 
+def push_dataset_card_to_hub(
+    repo_id: str, revision: str | None, tags: list | None = None, text: str | None = None
+):
+    """Creates and pushes a LeRobotDataset Card with appropriate tags to easily find it on the hub."""
+    card = create_lerobot_dataset_card(tags=tags, text=text)
+    card.push_to_hub(repo_id=repo_id, repo_type="dataset", revision=revision)
+
+
 def push_videos_to_hub(repo_id: str, videos_dir: str | Path, revision: str | None):
     """Expect mp4 files to be all stored in a single "videos" directory.
     On the hugging face repositery, they will be uploaded in a "videos" directory at the root.
@@ -197,22 +152,20 @@ def push_dataset_to_hub(
     num_workers: int = 8,
     episodes: list[int] | None = None,
     force_override: bool = False,
+    resume: bool = False,
     cache_dir: Path = Path("/tmp"),
     tests_data_dir: Path | None = None,
+    encoding: dict | None = None,
 ):
-    # Check repo_id is well formated
-    if len(repo_id.split("/")) != 2:
-        raise ValueError(
-            f"`repo_id` is expected to contain a community or user id `/` the name of the dataset (e.g. 'lerobot/pusht'), but instead contains '{repo_id}'."
-        )
+    check_repo_id(repo_id)
     user_id, dataset_id = repo_id.split("/")
 
     # Robustify when `raw_dir` is str instead of Path
     raw_dir = Path(raw_dir)
     if not raw_dir.exists():
         raise NotADirectoryError(
-            f"{raw_dir} does not exists. Check your paths or run this command to download an existing raw dataset on the hub:"
-            f"python lerobot/common/datasets/push_dataset_to_hub/_download_raw.py --raw-dir your/raw/dir --repo-id your/repo/id_raw"
+            f"{raw_dir} does not exists. Check your paths or run this command to download an existing raw dataset on the hub: "
+            f"`python lerobot/common/datasets/push_dataset_to_hub/_download_raw.py --raw-dir your/raw/dir --repo-id your/repo/id_raw`"
         )
 
     if local_dir:
@@ -230,9 +183,8 @@ def push_dataset_to_hub(
         if local_dir.exists():
             if force_override:
                 shutil.rmtree(local_dir)
-            else:
-                raise ValueError(
-                    f"`local_dir` already exists ({local_dir}). Use `--force-override 1`.")
+            elif not resume:
+                raise ValueError(f"`local_dir` already exists ({local_dir}). Use `--force-override 1`.")
 
         meta_data_dir = local_dir / "meta_data"
         videos_dir = local_dir / "videos"
@@ -249,7 +201,7 @@ def push_dataset_to_hub(
     # convert dataset from original raw format to LeRobot format
     from_raw_to_lerobot_format = get_from_raw_to_lerobot_format_fn(raw_format)
     hf_dataset, episode_data_index, info = from_raw_to_lerobot_format(
-        raw_dir, videos_dir, fps, video, episodes
+        raw_dir, videos_dir, fps, video, episodes, encoding
     )
 
     lerobot_dataset = LeRobotDataset.from_preloaded(
@@ -273,6 +225,7 @@ def push_dataset_to_hub(
     if push_to_hub:
         hf_dataset.push_to_hub(repo_id, revision="main")
         push_meta_data_to_hub(repo_id, meta_data_dir, revision="main")
+        push_dataset_card_to_hub(repo_id, revision="main")
         if video:
             push_videos_to_hub(repo_id, videos_dir, revision="main")
         create_branch(repo_id, repo_type="dataset", branch=CODEBASE_VERSION)
@@ -373,6 +326,12 @@ def main():
         type=int,
         default=0,
         help="When set to 1, removes provided output directory if it already exists. By default, raises a ValueError exception.",
+    )
+    parser.add_argument(
+        "--resume",
+        type=int,
+        default=0,
+        help="When set to 1, resumes a previous run.",
     )
     parser.add_argument(
         "--tests-data-dir",
